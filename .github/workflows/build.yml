@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Java Kurulumu
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -35,17 +35,17 @@ jobs:
           rm lib/main.dart
           cp kod/main.dart lib/main.dart
           
-          # Android İnternet İznini Otomatik Ekle (Manifest dosyasını düzenler)
+          # Android İnternet İznini Otomatik Ekle
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <application/g' android/app/src/main/AndroidManifest.xml
           
-          # İkon Ayarları (Gereksiz dosyaları temizle)
+          # İkon Ayarları
           flutter pub get
 
       - name: APK Derle (Release Mod)
         run: flutter build apk --release --no-tree-shake-icons
 
       - name: APK'yı Yükle (Artifact)
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: lupra-prime-apk
           path: build/app/outputs/flutter-apk/app-release.apk
