@@ -1,4 +1,4 @@
-name: Lupra Prime (Logo ve Isim)
+name: Lupra Prime (Akıllı Logo)
 
 on:
   push:
@@ -23,22 +23,29 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Uygulamayi Hazirla (Logo ve Isim Dahil)
+      - name: Uygulamayi Hazirla ve Hatalari Duzelt
         run: |
           # 1. Proje Klasörünü Oluştur
           flutter create mobil_uygulama --org com.lupraprime
           
-          # 2. Ana dizindeki logonuzu proje içine kopyala
-          cp logo.png mobil_uygulama/logo.png
+          # 2. LOGO KONTROLÜ VE DÜZELTME (Akıllı Kısım)
+          # İsminde 'logo' geçen herhangi bir PNG dosyasını bul (Büyük/küçük harf farketmez)
+          find . -maxdepth 1 -iname "*logo*.png" -exec cp {} mobil_uygulama/logo.png \; -quit
+          
+          # Eğer logo hala yoksa (Kullanıcı yüklemeyi unuttuysa), geçici bir ikon indir
+          if [ ! -f mobil_uygulama/logo.png ]; then
+             echo "UYARI: Kendi logonuz bulunamadı. Geçici ikon kullanılıyor."
+             wget -O mobil_uygulama/logo.png https://cdn-icons-png.flaticon.com/512/777/777242.png
+          fi
           
           # 3. Proje klasörüne gir
           cd mobil_uygulama
           
-          # 4. Gerekli Paketleri Ekle (WebView ve İkon Değiştirici)
+          # 4. Gerekli Paketleri Ekle
           flutter pub add webview_flutter
           flutter pub add -d flutter_launcher_icons
           
-          # 5. İKON AYARLARI (Otomatik yapılandırma dosyası oluştur)
+          # 5. İKON YAPILANDIRMASI
           cat > flutter_launcher_icons.yaml <<EOF
           flutter_launcher_icons:
             android: true
@@ -49,7 +56,7 @@ jobs:
             adaptive_icon_foreground: "logo.png"
           EOF
           
-          # 6. KODLARI YAZ (Webview Kodları)
+          # 6. KODLARI YAZ
           rm lib/main.dart
           cat > lib/main.dart <<EOF
           import 'package:flutter/material.dart';
@@ -66,7 +73,7 @@ jobs:
             Widget build(BuildContext context) {
               return MaterialApp(
                 debugShowCheckedModeBanner: false,
-                title: 'Lupra Prime', // Bu sadece kod içi başlıktır
+                title: 'Lupra Prime',
                 theme: ThemeData(
                   primarySwatch: Colors.blue,
                   scaffoldBackgroundColor: Colors.black, 
@@ -124,14 +131,13 @@ jobs:
           }
           EOF
           
-          # 7. UYGULAMA İSMİNİ DEĞİŞTİR (Manifest dosyasında)
-          # "mobil_uygulama" yazan yeri "Lupra Prime" yapıyoruz
+          # 7. UYGULAMA İSMİNİ "Lupra Prime" YAP
           sed -i 's/android:label="mobil_uygulama"/android:label="Lupra Prime"/g' android/app/src/main/AndroidManifest.xml
           
-          # 8. İNTERNET İZNİ EKLE
+          # 8. İNTERNET İZNİ
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <application/g' android/app/src/main/AndroidManifest.xml
           
-          # 9. İkonları Oluştur ve Derle
+          # 9. Derle
           flutter pub get
           dart run flutter_launcher_icons
           flutter build apk --release --no-tree-shake-icons
@@ -139,5 +145,5 @@ jobs:
       - name: Yeni APK'yı İndir
         uses: actions/upload-artifact@v4
         with:
-          name: lupra-prime-logo-v2
+          name: lupra-prime-v2
           path: mobil_uygulama/build/app/outputs/flutter-apk/app-release.apk
