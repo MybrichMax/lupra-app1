@@ -1,4 +1,4 @@
-name: Lupra Prime Tam Otomatik
+name: Lupra Prime Garantili
 
 on:
   push:
@@ -23,16 +23,18 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Uygulamayı Oluştur ve Kodları Yaz
+      - name: Uygulamayı Oluştur ve Derle
         run: |
-          # 1. Proje oluştur
-          flutter create --org com.lupraprime .
+          # 1. Çakışmayı önlemek için yeni bir klasör oluşturuyoruz
+          flutter create mobil_uygulama --org com.lupraprime
+          
+          # 2. O klasörün içine giriyoruz (Artık her şey burada yapılacak)
+          cd mobil_uygulama
+          
+          # 3. Webview paketini ekle
           flutter pub add webview_flutter
           
-          # 2. İNTERNET İZNİ EKLE (Manifest dosyasını düzenle)
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <application/g' android/app/src/main/AndroidManifest.xml
-          
-          # 3. KODLARI DİREKT YAZ (Dosya aramaya son!)
+          # 4. Kodları yaz (Eski dosyayı silip yenisini oluşturuyoruz)
           rm lib/main.dart
           cat > lib/main.dart <<EOF
           import 'package:flutter/material.dart';
@@ -107,14 +109,16 @@ jobs:
           }
           EOF
           
-          # 4. Bağımlılıkları Getir
+          # 5. İNTERNET İZNİ (Manifest dosyasını bulup düzenle)
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <application/g' android/app/src/main/AndroidManifest.xml
+          
+          # 6. Bağımlılıkları güncelle ve APK üret
           flutter pub get
-
-      - name: APK Derle
-        run: flutter build apk --release --no-tree-shake-icons
+          flutter build apk --release --no-tree-shake-icons
 
       - name: APK İndirilebilir Yap
         uses: actions/upload-artifact@v4
         with:
           name: lupra-prime-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          # APK artık alt klasörün içinde oluştuğu için yolu güncelledik:
+          path: mobil_uygulama/build/app/outputs/flutter-apk/app-release.apk
