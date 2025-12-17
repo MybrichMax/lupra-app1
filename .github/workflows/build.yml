@@ -1,4 +1,4 @@
-name: Lupra Prime (Akıllı Logo)
+name: Lupra Prime (Turbo Hizli)
 
 on:
   push:
@@ -23,25 +23,21 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Uygulamayi Hazirla ve Hatalari Duzelt
+      - name: Hizli Uygulamayi Olustur
         run: |
           # 1. Proje Klasörünü Oluştur
           flutter create mobil_uygulama --org com.lupraprime
           
-          # 2. LOGO KONTROLÜ VE DÜZELTME (Akıllı Kısım)
-          # İsminde 'logo' geçen herhangi bir PNG dosyasını bul (Büyük/küçük harf farketmez)
+          # 2. LOGO KONTROLÜ (Akıllı Logo Sistemi)
           find . -maxdepth 1 -iname "*logo*.png" -exec cp {} mobil_uygulama/logo.png \; -quit
-          
-          # Eğer logo hala yoksa (Kullanıcı yüklemeyi unuttuysa), geçici bir ikon indir
           if [ ! -f mobil_uygulama/logo.png ]; then
-             echo "UYARI: Kendi logonuz bulunamadı. Geçici ikon kullanılıyor."
              wget -O mobil_uygulama/logo.png https://cdn-icons-png.flaticon.com/512/777/777242.png
           fi
           
-          # 3. Proje klasörüne gir
+          # 3. Klasöre gir
           cd mobil_uygulama
           
-          # 4. Gerekli Paketleri Ekle
+          # 4. Paketler
           flutter pub add webview_flutter
           flutter pub add -d flutter_launcher_icons
           
@@ -56,7 +52,7 @@ jobs:
             adaptive_icon_foreground: "logo.png"
           EOF
           
-          # 6. KODLARI YAZ
+          # 6. TURBO KODLAR (loading indicator eklendi)
           rm lib/main.dart
           cat > lib/main.dart <<EOF
           import 'package:flutter/material.dart';
@@ -75,7 +71,7 @@ jobs:
                 debugShowCheckedModeBanner: false,
                 title: 'Lupra Prime',
                 theme: ThemeData(
-                  primarySwatch: Colors.blue,
+                  primarySwatch: Colors.grey,
                   scaffoldBackgroundColor: Colors.black, 
                 ),
                 home: const WebViewScreen(),
@@ -92,15 +88,22 @@ jobs:
 
           class _WebViewScreenState extends State<WebViewScreen> {
             late final WebViewController _controller;
+            bool isLoading = true; // Yükleniyor mu kontrolü
 
             @override
             void initState() {
               super.initState();
               _controller = WebViewController()
                 ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                ..setBackgroundColor(const Color(0x00000000))
+                ..setBackgroundColor(const Color(0xFF000000)) // Arka plan siyah
                 ..setNavigationDelegate(
                   NavigationDelegate(
+                    onPageStarted: (String url) {
+                      setState(() { isLoading = true; });
+                    },
+                    onPageFinished: (String url) {
+                      setState(() { isLoading = false; });
+                    },
                     onNavigationRequest: (NavigationRequest request) {
                       return NavigationDecision.navigate;
                     },
@@ -122,8 +125,22 @@ jobs:
               return WillPopScope(
                 onWillPop: _onWillPop,
                 child: Scaffold(
+                  backgroundColor: Colors.black,
                   body: SafeArea(
-                    child: WebViewWidget(controller: _controller),
+                    // Stack: Üst üste katman koymamızı sağlar
+                    child: Stack(
+                      children: [
+                        WebViewWidget(controller: _controller),
+                        // Eğer yükleniyorsa dönen çubuğu göster
+                        isLoading 
+                          ? Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white, // Beyaz loading çubuğu
+                              ),
+                            )
+                          : Stack(),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -131,19 +148,20 @@ jobs:
           }
           EOF
           
-          # 7. UYGULAMA İSMİNİ "Lupra Prime" YAP
+          # 7. PERFORMANS AYARLARI (Manifest Düzenleme)
+          # Uygulama ismi değiştirme
           sed -i 's/android:label="mobil_uygulama"/android:label="Lupra Prime"/g' android/app/src/main/AndroidManifest.xml
           
-          # 8. İNTERNET İZNİ
-          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <application/g' android/app/src/main/AndroidManifest.xml
+          # İnternet izni + Donanım Hızlandırma (Hardware Accelerated)
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <application android:hardwareAccelerated="true"/g' android/app/src/main/AndroidManifest.xml
           
-          # 9. Derle
+          # 8. Derle
           flutter pub get
           dart run flutter_launcher_icons
           flutter build apk --release --no-tree-shake-icons
 
-      - name: Yeni APK'yı İndir
+      - name: Turbo APK İndir
         uses: actions/upload-artifact@v4
         with:
-          name: lupra-prime-v2
+          name: lupra-prime-turbo
           path: mobil_uygulama/build/app/outputs/flutter-apk/app-release.apk
