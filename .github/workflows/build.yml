@@ -1,4 +1,4 @@
-name: Lupra Prime (Turbo Hizli)
+name: Lupra Prime (Sinematik Giris)
 
 on:
   push:
@@ -23,12 +23,13 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Hizli Uygulamayi Olustur
+      - name: Sinematik Uygulamayi Olustur
         run: |
           # 1. Proje Klasörünü Oluştur
           flutter create mobil_uygulama --org com.lupraprime
           
-          # 2. LOGO KONTROLÜ (Akıllı Logo Sistemi)
+          # 2. LOGO İŞLEMLERİ
+          # Logoyu bul ve klasöre kopyala
           find . -maxdepth 1 -iname "*logo*.png" -exec cp {} mobil_uygulama/logo.png \; -quit
           if [ ! -f mobil_uygulama/logo.png ]; then
              wget -O mobil_uygulama/logo.png https://cdn-icons-png.flaticon.com/512/777/777242.png
@@ -37,11 +38,15 @@ jobs:
           # 3. Klasöre gir
           cd mobil_uygulama
           
-          # 4. Paketler
+          # 4. PUBSPEC.YAML AYARI (Logoyu kod içinde kullanabilmek için izni açıyoruz)
+          # "assets" satırını yorum satırı olmaktan çıkarıp logoyu ekliyoruz
+          sed -i 's/# assets:/assets:\n    - logo.png/g' pubspec.yaml
+          
+          # 5. Paketler
           flutter pub add webview_flutter
           flutter pub add -d flutter_launcher_icons
           
-          # 5. İKON YAPILANDIRMASI
+          # 6. İKON YAPILANDIRMASI
           cat > flutter_launcher_icons.yaml <<EOF
           flutter_launcher_icons:
             android: true
@@ -52,11 +57,12 @@ jobs:
             adaptive_icon_foreground: "logo.png"
           EOF
           
-          # 6. TURBO KODLAR (loading indicator eklendi)
+          # 7. SİNEMATİK KODLAR
           rm lib/main.dart
           cat > lib/main.dart <<EOF
           import 'package:flutter/material.dart';
           import 'package:webview_flutter/webview_flutter.dart';
+          import 'dart:async';
 
           void main() {
             runApp(const LupraPrimeApp());
@@ -71,14 +77,85 @@ jobs:
                 debugShowCheckedModeBanner: false,
                 title: 'Lupra Prime',
                 theme: ThemeData(
-                  primarySwatch: Colors.grey,
-                  scaffoldBackgroundColor: Colors.black, 
+                  primarySwatch: Colors.blue,
+                  scaffoldBackgroundColor: Colors.black, // Arka plan simsiyah
                 ),
-                home: const WebViewScreen(),
+                home: const CinematicSplashScreen(), // Açılışta Sinema Sahnesi
               );
             }
           }
 
+          // --- SİNEMATİK GİRİŞ EKRANI ---
+          class CinematicSplashScreen extends StatefulWidget {
+            const CinematicSplashScreen({super.key});
+
+            @override
+            State<CinematicSplashScreen> createState() => _CinematicSplashScreenState();
+          }
+
+          class _CinematicSplashScreenState extends State<CinematicSplashScreen> with SingleTickerProviderStateMixin {
+            late AnimationController _controller;
+            late Animation<double> _opacity;
+            late Animation<double> _scale;
+
+            @override
+            void initState() {
+              super.initState();
+              
+              // Animasyon Süresi: 2.5 Saniye (Yavaş ve etkileyici)
+              _controller = AnimationController(
+                duration: const Duration(milliseconds: 2500),
+                vsync: this,
+              );
+
+              // Opaklık: Karanlıktan aydınlığa
+              _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+                CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+              );
+
+              // Ölçek: Hafifçe büyüme efekti (Zoom-In)
+              _scale = Tween<double>(begin: 0.8, end: 1.1).animate(
+                CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+              );
+
+              // Animasyonu başlat ve bitince Ana Sayfaya geç
+              _controller.forward().then((value) {
+                // Kısa bir bekleme ekle (logo tam görününce hemen gitmesin)
+                Timer(const Duration(milliseconds: 500), () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => const WebViewScreen()),
+                  );
+                });
+              });
+            }
+
+            @override
+            void dispose() {
+              _controller.dispose();
+              super.dispose();
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                backgroundColor: Colors.black,
+                body: Center(
+                  child: FadeTransition(
+                    opacity: _opacity,
+                    child: ScaleTransition(
+                      scale: _scale,
+                      child: Image.asset(
+                        'logo.png', // Senin yüklediğin logo
+                        width: 180, // Logo boyutu
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+          }
+
+          // --- WEBVIEW EKRANI (Loading animasyonu kaldırıldı) ---
           class WebViewScreen extends StatefulWidget {
             const WebViewScreen({super.key});
 
@@ -88,28 +165,21 @@ jobs:
 
           class _WebViewScreenState extends State<WebViewScreen> {
             late final WebViewController _controller;
-            bool isLoading = true; // Yükleniyor mu kontrolü
 
             @override
             void initState() {
               super.initState();
               _controller = WebViewController()
                 ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                ..setBackgroundColor(const Color(0xFF000000)) // Arka plan siyah
+                ..setBackgroundColor(const Color(0xFF000000))
                 ..setNavigationDelegate(
                   NavigationDelegate(
-                    onPageStarted: (String url) {
-                      setState(() { isLoading = true; });
-                    },
-                    onPageFinished: (String url) {
-                      setState(() { isLoading = false; });
-                    },
                     onNavigationRequest: (NavigationRequest request) {
                       return NavigationDecision.navigate;
                     },
                   ),
                 )
-                ..loadRequest(Uri.parse('https://lupraprime.blogspot.com'));
+                ..loadRequest(Uri.parse('https://lupraprime.blogspot.com/'));
             }
 
             Future<bool> _onWillPop() async {
@@ -127,20 +197,8 @@ jobs:
                 child: Scaffold(
                   backgroundColor: Colors.black,
                   body: SafeArea(
-                    // Stack: Üst üste katman koymamızı sağlar
-                    child: Stack(
-                      children: [
-                        WebViewWidget(controller: _controller),
-                        // Eğer yükleniyorsa dönen çubuğu göster
-                        isLoading 
-                          ? Center(
-                              child: CircularProgressIndicator(
-                                color: Colors.white, // Beyaz loading çubuğu
-                              ),
-                            )
-                          : Stack(),
-                      ],
-                    ),
+                    // Stack kaldırıldı, sadece site var. Yüklenme çubuğu yok.
+                    child: WebViewWidget(controller: _controller),
                   ),
                 ),
               );
@@ -148,20 +206,17 @@ jobs:
           }
           EOF
           
-          # 7. PERFORMANS AYARLARI (Manifest Düzenleme)
-          # Uygulama ismi değiştirme
+          # 8. PERFORMANS VE İSİM AYARLARI
           sed -i 's/android:label="mobil_uygulama"/android:label="Lupra Prime"/g' android/app/src/main/AndroidManifest.xml
-          
-          # İnternet izni + Donanım Hızlandırma (Hardware Accelerated)
           sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET"\/>\n    <application android:hardwareAccelerated="true"/g' android/app/src/main/AndroidManifest.xml
           
-          # 8. Derle
+          # 9. Derle
           flutter pub get
           dart run flutter_launcher_icons
           flutter build apk --release --no-tree-shake-icons
 
-      - name: Turbo APK İndir
+      - name: Sinematik APK İndir
         uses: actions/upload-artifact@v4
         with:
-          name: lupra-prime-turbo
+          name: lupra-prime-sinematik
           path: mobil_uygulama/build/app/outputs/flutter-apk/app-release.apk
