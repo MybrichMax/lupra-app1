@@ -179,7 +179,7 @@ jobs:
                     },
                   ),
                 )
-                ..loadRequest(Uri.parse('https://lupraprime.blogspot.com/'));
+                ..loadRequest(Uri.parse('https://lupraprime.blogspot.com/?m=1'));
             }
 
             Future<bool> _onWillPop() async {
